@@ -207,7 +207,7 @@ class Keyboard {
             this.updateDisplay();
         }
 
-        this.playAudio(button);
+        this.setAudio(button);
       })
 
       this.keyboard.append(button);
@@ -303,8 +303,9 @@ class Keyboard {
               this.properties.capsLock = !this.properties.capsLock;
               this.changeCase();
               key.classList.toggle("keyboard__key--active");
-          }
-          else key.classList.add("keyboard__key--active");
+          } else key.classList.add("keyboard__key--active");
+
+          this.setAudio(key);
         }
       }
     })
@@ -325,7 +326,7 @@ class Keyboard {
     })
   }
 
-  playAudio(btn) {
+  setAudio(btn) {
     if (this.properties.audio) {
       let audio;
       if (document.querySelector(`[data-soundkey="${btn.dataset.keycode}"]`)) {
