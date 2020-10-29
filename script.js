@@ -5,6 +5,8 @@ class Keyboard {
     this.keyboard = null;
     this.display = fieldElement;
     this.properties = {
+      cursorPosition: 0,
+      audio: true,
       value: '',
       end: '',
       capsLock: false,
@@ -17,11 +19,13 @@ class Keyboard {
                  [['i', 'ш']], [['o', 'щ']], [['p', 'з']], [['[', 'х'], '{'], [[']', 'ъ'], '}'], 'Enter', 'Caps Lock',
                  [['a', 'ф']], [['s', 'ы']], [['d', 'в']], [['f', 'а']], [['g', 'п']], [['h', 'р']], [['j', 'о']],
                  [['k', 'л']], [['l', 'д']], [[';', 'ж'], ':'], [["'", 'э'], '"'], ['\\', ['|', '/']], 'Shift', [['z', 'я']], [['x', 'ч']],
-                 [['c', 'с']], [['v', 'м']], [['b', 'и']], [['n', 'т']], [['m', 'ь']], [[',', 'б'], '<'], [['.', 'ю'], '>'], [['/', '.'], ['?', ',']], 'Space', 'Hide', 'EN'];
+                 [['c', 'с']], [['v', 'м']], [['b', 'и']], [['n', 'т']], [['m', 'ь']], [[',', 'б'], '<'], [['.', 'ю'], '>'], [['/', '.'], ['?', ',']],
+                  'Space', 'Hide', 'EN', 'Left', 'Right', 'Audio'];
 
     this.init();
     this.createKeys();
     this.initCursorHandler();
+    this.initKeyEnterHandler();
   }
 
   init() {
@@ -47,6 +51,18 @@ class Keyboard {
       }
 
       switch(key) {
+        case 'Right':
+            button.classList.add("keyboard__key");
+            button.dataset.keycode = 39;
+            button.insertAdjacentHTML(`beforeend`, `
+               <i class="material-icons">keyboard_arrow_right</i>`);
+            break;
+        case 'Left':
+            button.classList.add("keyboard__key");
+            button.dataset.keycode = 37;
+            button.insertAdjacentHTML(`beforeend`, `
+               <i class="material-icons">keyboard_arrow_left</i>`);
+            break;
         case 'Hide':
             button.classList.add("keyboard__key", "keyboard__key--wide");
             button.insertAdjacentHTML(`beforeend`, `
@@ -54,26 +70,31 @@ class Keyboard {
             break;
         case 'Space':
             button.classList.add("keyboard__key", "keyboard__key--extra-wide");
+            button.dataset.keycode = 32;
             button.insertAdjacentHTML(`beforeend`, `
                <i class="material-icons">space_bar</i>`);
             break;
         case 'Shift':
             button.classList.add("keyboard__key", "keyboard__key--wide");
+            button.dataset.keycode = 16;
             button.insertAdjacentHTML(`beforeend`, `
                 <i class="material-icons">north</i>`);
             break;
         case 'Caps Lock':
             button.classList.add("keyboard__key", "keyboard__key--wide");
+            button.dataset.keycode = 20;
             button.insertAdjacentHTML(`beforeend`, `
                <i class="material-icons">keyboard_capslock</i>`);
             break;
         case 'Backspace':
             button.classList.add("keyboard__key", "keyboard__key--delete");
+            button.dataset.keycode = 8;
             button.insertAdjacentHTML(`beforeend`, `
               <i class="material-icons">backspace</i>`);
             break;
         case 'Enter':
             button.classList.add("keyboard__key", "keyboard__key--wide");
+            button.dataset.keycode = 13;
             button.insertAdjacentHTML(`beforeend`, `
               <i class="material-icons">keyboard_return</i>`);
             break;
@@ -81,13 +102,69 @@ class Keyboard {
             button.classList.add("keyboard__key", "keyboard__key--wide");
             (this.properties.ru == 0) ? button.innerHTML = key : button.innerHTML = 'RU';
             break;
+        case 'Audio':
+            button.classList.add("keyboard__key");
+            button.insertAdjacentHTML(`beforeend`, `
+              <i class="material-icons">music_note</i>`);
+            break;
         default:
+            let symbol = (key[0] instanceof Array) ? key[0][0] : key[0];
+            if (symbol.toUpperCase().charCodeAt(0) > 90 ||
+                symbol.toUpperCase().charCodeAt(0) < 48 ||
+                symbol.toUpperCase().charCodeAt(0) == 61 ||
+                symbol.toUpperCase().charCodeAt(0) == 59) {
+              switch(symbol) {
+                case '`':
+                    button.dataset.keycode = 192;
+                    break;
+                case '-':
+                    button.dataset.keycode = 189;
+                    break;
+                case '=':
+                    button.dataset.keycode = 187;
+                    break;
+                case '[':
+                    button.dataset.keycode = 219;
+                    break;
+                case ']':
+                    button.dataset.keycode = 221;
+                    break;
+                case ';':
+                    button.dataset.keycode = 186;
+                    break;
+                case "'":
+                    button.dataset.keycode = 222;
+                    break;
+                case '\\':
+                    button.dataset.keycode = 220;
+                    break;
+                case ',':
+                    button.dataset.keycode = 188;
+                    break;
+                case '.':
+                    button.dataset.keycode = 190;
+                    break;
+                case '/':
+                    button.dataset.keycode = 191;
+                    break;
+              }
+            } else button.dataset.keycode = symbol.toUpperCase().charCodeAt(0);
             button.classList.add("keyboard__key");
       }
 
       button.addEventListener('click', () => {
         if (button.innerHTML.length > 2 && button.firstChild.nextSibling.classList.contains('material-icons')) {
           switch(button.firstChild.nextSibling.innerHTML) {
+            case 'keyboard_arrow_left':
+                if (this.properties.cursorPosition > 0) --this.properties.cursorPosition;
+                this.setCursorPosition();
+                break;
+            case 'keyboard_arrow_right':
+                if (this.properties.cursorPosition < this.display.value.length) {
+                  ++this.properties.cursorPosition;
+                }
+                this.setCursorPosition();
+                break;
             case 'north':
                 this.properties.shift = !this.properties.shift;
                 button.classList.toggle("keyboard__key--active");
@@ -113,6 +190,14 @@ class Keyboard {
                 this.properties.value = this.properties.value.substring(0, this.properties.value.length - 1);
                 this.updateDisplay();
                 break;
+            case 'music_note':
+                this.properties.audio = !this.properties.audio;
+                button.querySelector('i').innerHTML = 'music_off';
+                break;
+            case 'music_off':
+                this.properties.audio = !this.properties.audio;
+                button.querySelector('i').innerHTML = 'music_note';
+                break;
           }
         } else if (button.innerHTML.length == 2) {
             (this.properties.ru == 1) ? this.properties.ru = 0 : this.properties.ru = 1;
@@ -121,6 +206,8 @@ class Keyboard {
             this.properties.value += button.innerHTML;
             this.updateDisplay();
         }
+
+        this.playAudio(button);
       })
 
       this.keyboard.append(button);
@@ -171,7 +258,7 @@ class Keyboard {
   updateDisplay() {
     this.display.focus();
     this.display.value = this.properties.value + this.properties.end;
-    this.display.selectionStart = this.display.selectionEnd = this.properties.value.length;
+    this.properties.cursorPosition = this.display.selectionStart = this.display.selectionEnd = this.properties.value.length;
   }
 
   getCurrentValue(value) {
@@ -185,15 +272,75 @@ class Keyboard {
   initCursorHandler() {
     this.display.addEventListener('click', () => {
       setTimeout(() => {
-        this.getCurrentValue(this.display.value.substring(0, this.display.selectionStart)), 0
+        this.getCurrentValue(this.display.value.substring(0, this.display.selectionStart));
+        this.properties.cursorPosition = this.display.selectionStart;
       });
       setTimeout(() => {
-        this.getEnd(this.display.value.substring(this.display.selectionEnd, this.display.value.length)), 0
-      });
+        this.getEnd(this.display.value.substring(this.display.selectionEnd, this.display.value.length));
+      }, 0);
     });
   }
 
+  setCursorPosition() {
+    this.display.focus();
+    this.display.selectionStart = this.display.selectionEnd = this.properties.cursorPosition;
+    this.getCurrentValue(this.display.value.substring(0, this.display.selectionStart));
+    this.getEnd(this.display.value.substring(this.display.selectionEnd, this.display.value.length));
+  }
 
+  initKeyEnterHandler() {
+    document.addEventListener('keydown', (evt) => {
+      if (!this.keyboard.classList.contains("keyboard--hidden")) {
+        if (this.keyboard.querySelector(`[data-keycode="${evt.keyCode}"]`)) {
+          this.display.focus();
+
+          let key = this.keyboard.querySelector(`[data-keycode="${evt.keyCode}"]`);
+          if (evt.keyCode == 16) {
+            this.properties.shift = !this.properties.shift;
+            this.toggleShift();
+            key.classList.toggle("keyboard__key--active");
+          } else if (evt.keyCode == 20) {
+              this.properties.capsLock = !this.properties.capsLock;
+              this.changeCase();
+              key.classList.toggle("keyboard__key--active");
+          }
+          else key.classList.add("keyboard__key--active");
+        }
+      }
+    })
+    document.addEventListener('keyup', (evt) => {
+      if (!this.keyboard.classList.contains("keyboard--hidden")) {
+        if (this.keyboard.querySelector(`[data-keycode="${evt.keyCode}"]`)) {
+          if (evt.keyCode == 16 || evt.keyCode == 20) return;
+          this.display.focus();
+
+          let key = this.keyboard.querySelector(`[data-keycode="${evt.keyCode}"]`);
+          key.classList.remove("keyboard__key--active");
+
+          this.properties.cursorPosition = this.display.selectionEnd;
+          this.getCurrentValue(this.display.value.substring(0, this.display.selectionStart));
+          this.getEnd(this.display.value.substring(this.display.selectionEnd, this.display.value.length));
+        }
+      }
+    })
+  }
+
+  playAudio(btn) {
+    if (this.properties.audio) {
+      let audio;
+      if (document.querySelector(`[data-soundkey="${btn.dataset.keycode}"]`)) {
+        audio = document.querySelector(`[data-soundkey="${btn.dataset.keycode}"]`);
+      } else {
+        if (this.properties.ru) {
+          audio = document.querySelector(`[data-soundkey="1"]`);
+        } else {
+          audio = document.querySelector(`[data-soundkey="0"]`);
+        }
+      }
+      audio.currentTime = 0;
+      audio.play();
+    }
+  }
 }
 
 const textarea = document.querySelector('textarea');
