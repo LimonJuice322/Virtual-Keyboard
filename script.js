@@ -11,7 +11,8 @@ class Keyboard {
       end: '',
       capsLock: false,
       shift: false,
-      ru: 0
+      ru: 0,
+      micro: false
     }
     this.keys = [[['`', 'ё'], '~'], ['1', '!'], ['2', ['@', '"']], ['3', ['#', '№']], ['4', ['$', ';']], ['5', '%'], ['6', ['^', ':']],
                  ['7', ['&', '?']], ['8', '*'], ['9', '('], ['0', ')'], ['-', '_'], ['=', '+'], 'Backspace',
@@ -20,7 +21,7 @@ class Keyboard {
                  [['a', 'ф']], [['s', 'ы']], [['d', 'в']], [['f', 'а']], [['g', 'п']], [['h', 'р']], [['j', 'о']],
                  [['k', 'л']], [['l', 'д']], [[';', 'ж'], ':'], [["'", 'э'], '"'], ['\\', ['|', '/']], 'Shift', [['z', 'я']], [['x', 'ч']],
                  [['c', 'с']], [['v', 'м']], [['b', 'и']], [['n', 'т']], [['m', 'ь']], [[',', 'б'], '<'], [['.', 'ю'], '>'], [['/', '.'], ['?', ',']],
-                  'Space', 'Hide', 'EN', 'Left', 'Right', 'Audio'];
+                  'Space', 'Hide', 'EN', 'Left', 'Right', 'Audio', 'Micro'];
 
     this.init();
     this.createKeys();
@@ -106,6 +107,11 @@ class Keyboard {
             button.classList.add("keyboard__key");
             button.insertAdjacentHTML(`beforeend`, `
               <i class="material-icons">music_note</i>`);
+            break;
+        case 'Micro':
+            button.classList.add("keyboard__key");
+            button.insertAdjacentHTML(`beforeend`, `
+              <i class="material-icons">mic_off</i>`);
             break;
         default:
             let symbol = (key[0] instanceof Array) ? key[0][0] : key[0];
@@ -198,6 +204,16 @@ class Keyboard {
                 this.properties.audio = !this.properties.audio;
                 button.querySelector('i').innerHTML = 'music_note';
                 break;
+            case 'mic_off':
+                this.properties.micro = !this.properties.micro;
+                button.querySelector('i').innerHTML = 'mic';
+                this.enableSpeech();
+                break;
+            case 'mic':
+                this.properties.micro = !this.properties.micro;
+                button.querySelector('i').innerHTML = 'mic_off';
+                this.enableSpeech();
+                break;
           }
         } else if (button.innerHTML.length == 2) {
             (this.properties.ru == 1) ? this.properties.ru = 0 : this.properties.ru = 1;
@@ -207,7 +223,7 @@ class Keyboard {
             this.updateDisplay();
         }
 
-        this.playAudio(button);
+        this.setAudio(button);
       })
 
       this.keyboard.append(button);
@@ -303,8 +319,9 @@ class Keyboard {
               this.properties.capsLock = !this.properties.capsLock;
               this.changeCase();
               key.classList.toggle("keyboard__key--active");
-          }
-          else key.classList.add("keyboard__key--active");
+          } else key.classList.add("keyboard__key--active");
+
+          this.setAudio(key);
         }
       }
     })
@@ -325,7 +342,7 @@ class Keyboard {
     })
   }
 
-  playAudio(btn) {
+  setAudio(btn) {
     if (this.properties.audio) {
       let audio;
       if (document.querySelector(`[data-soundkey="${btn.dataset.keycode}"]`)) {
@@ -339,6 +356,34 @@ class Keyboard {
       }
       audio.currentTime = 0;
       audio.play();
+    }
+  }
+
+  enableSpeech() {
+    if (!this.properties.recognition) {
+      window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      this.properties.recognition = new SpeechRecognition();
+      this.properties.recognition.interimResults = true;
+      this.properties.recognition.lang = (this.properties.ru) ? 'ru-RU' : 'en-EN';
+      this.properties.recognition.addEventListener('result', (evt) => {
+        const transcript = Array.from(evt.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+
+          if (evt.results[0].isFinal) {
+            this.properties.value += ' ' + transcript;
+            this.updateDisplay();
+        }
+      })
+    }
+    if (this.properties.micro) {
+      this.properties.recognition.addEventListener('end', this.properties.recognition.start);
+      this.properties.recognition.start();
+    } else {
+      this.properties.recognition.removeEventListener('end', this.properties.recognition.start);
+      this.properties.recognition.stop();
     }
   }
 }
